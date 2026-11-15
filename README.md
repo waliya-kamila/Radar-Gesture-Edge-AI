@@ -1,0 +1,101 @@
+# Privacy-Safe Radar Gesture Recognition using Edge AI
+
+Recognising 12 hand gestures from three ultra-wideband (UWB) impulse radars with a **30 KB INT8 neural network** that runs on a microcontroller. Because inference happens on the device, only the gesture label (1 byte) leaves the sensor, never the raw radar data.
+
+**[▶ Live demo](https://huggingface.co/spaces/Waliyaaaa/radar-gesture-edge-ai)**: the INT8 model runs in your browser on real radar recordings.
+
+> Status: active work. Publication experiments (extra seeds, stronger privacy attackers) and an embedded C firmware simulation are in progress.
+
+---
+
+## Key results
+
+| | Result |
+|---|---|
+| Accuracy on **unseen users** (leave-one-subject-out, 8 participants) | **89.6%** macro-F1 (float), **89.3%** (INT8) |
+| Model size | 24,476 parameters → **30 KB** full-INT8 TFLite file (6.5 KB variant: 88.5%) |
+| Memory on STM32 (ST Edge AI Core 4.1) | 24.2 KiB weights + 25.6 KiB activations |
+| Measured latency | **22.9 ms** on Cortex-M7 @ 480 MHz · **106.8 ms** on Cortex-M4 @ 180 MHz |
+| Identity leakage (attacker guesses which of 8 users) | raw radar **98.7%** → label-only output **13.4%** (chance 12.8%) |
+
+### Measured on real STM32 boards (ST Edge AI Developer Cloud)
+
+| Board | Core | MHz | Model M (24 KB) | Model S (6.5 KB) |
+|---|---|---:|---:|---:|
+| NUCLEO-H743ZI2 | Cortex-M7 | 480 | 22.9 ms | 9.8 ms |
+| STM32H747I-DISCO | Cortex-M7 | 480 | 27.6 ms | – |
+| STM32H7B3I-DK | Cortex-M7 | 280 | 39.6 ms | – |
+| STM32F769I-DISCO | Cortex-M7 | 216 | 50.7 ms | – |
+| STM32H573I-DK | Cortex-M33 | 250 | 66.3 ms | – |
+| STM32F469I-DISCO | Cortex-M4 | 180 | 106.8 ms | 42.4 ms |
+
+---
+
+## Pipeline
+
+```
+3 UWB radars (90 frames × 189 range bins × 3)
+   → loop-back clutter filter (causal, per frame)
+   → Hilbert envelope
+   → range crop + pooling (90 × 32 × 3, 5.9× smaller)
+   → TinyRadarCNN, full INT8 (30 KB)
+   → gesture label (1 byte)
+```
+
+- **Pre-processing** is causal and streaming, so the raw recording never has to be stored. It raises a random-forest baseline from 70.6 to 89.9 macro-F1.
+- **TinyRadarCNN**: 3 conv blocks (16/32/64 channels), batch norm, ReLU, max pooling, global average pooling, linear layer. Per-recording scaling removes amplitude differences between users.
+- **INT8**: batch norm folded into the convolutions, full-integer post-training quantization (TensorFlow Lite), calibrated on training subjects only.
+
+## Main findings
+
+1. **Evaluation protocol matters.** Under leave-one-subject-out the model reaches 89.6%; published 97–99% results on this dataset mostly use random splits where the same person appears in training and test data.
+2. **The top radar is essential.** Without it, gestures that differ only in vertical direction are confused (up→down vs down→up recall 52% → 98% when the top radar is added).
+3. **Accuracy saturates at ~6K parameters.** The 6.5 KB model is within 1 point of the 24 KB model.
+4. **MACs are not latency.** The small model has 3.4× fewer MACs but runs only 2.3–2.5× faster on STM32.
+5. **Radar is not private by itself.** Raw radar identifies users with 98.7% accuracy; adversarial de-identification (gradient reversal) reduces embedding leakage by less than 4 points. Sending only the on-device label reduces leakage to chance level.
+6. **Data audit.** 200 recordings in the public dataset are byte-identical duplicates (participant 2, gestures 11 and 12); they are excluded from all experiments.
+
+---
+
+## Repository structure
+
+```
+notebooks/   Google Colab notebooks, run in order 01 → 08
+src/         radar_utils.py: shared code (data loading, LOSO folds, pre-processing,
+             TinyRadarCNN, training, INT8 export, privacy experiments)
+results/     CSV tables behind every number above
+figures/     plots used in the report
+models/      INT8 TFLite models (one per LOSO fold)
+demo/        static web demo (index.html): INT8 inference in the browser
+```
+
+| Notebook | What it does |
+|---|---|
+| 01_Data_Validation | download, data audit (duplicates), LOSO folds, raw baselines |
+| 02_SignalProcessing | clutter removal, Hilbert envelope, compact input |
+| 03_Models | TinyRadarCNN, normalisation study, augmentation study |
+| 04_SensorAblation | 7 radar combinations, confusion analysis |
+| 05_EdgeOptimization | width sweep, INT8 TFLite, memory/latency estimates, STM32 results |
+| 06_Privacy | identity-leakage audit, adversarial de-identification |
+| 07_Demo | demo data pack and Gradio app |
+| 08_Publication | literature-protocol comparison, extra seeds, stronger attackers |
+
+## How to reproduce
+
+1. Open the notebooks in **Google Colab** (GPU runtime recommended).
+2. Notebook 01 downloads the dataset and saves it to Google Drive under `MyDrive/RadarGestureEdgeAI/`.
+3. Copy `src/radar_utils.py` to `MyDrive/RadarGestureEdgeAI/`, then run notebooks 02 → 08 in order. Every long cell is resumable and skips results that already exist on Drive.
+
+The large data files (`X_recordings.npy`, `X_compact.npy`, feature arrays) are generated by the notebooks and are not stored in this repository.
+
+## Dataset
+
+UWB-Gestures: S. Ahmed, D. Wang, J. Park, S. H. Cho, "UWB-gestures, a public dataset of dynamic hand gestures acquired using impulse radar sensors," *Scientific Data* 8, 102 (2021). [doi:10.1038/s41597-021-00876-0](https://doi.org/10.1038/s41597-021-00876-0). The dataset is not redistributed here; please download it from the original source.
+
+## Team
+
+[Your Name] · [Teammate Name]: Embedded Systems course project, [University], 2026.
+
+## Citation
+
+A paper describing this work is in preparation. Until then, please cite this repository.
