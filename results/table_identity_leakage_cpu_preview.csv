@@ -1,0 +1,6 @@
+stage,dim,attacker_LR_%,attacker_RF_%,leakage_%,chance_%
+1. Raw radar (block features),729,89.0,98.7,98.7,12.8
+2. Compact input (block features),648,69.2,80.7,80.7,12.8
+3. CNN embedding (64-d),64,44.7,58.9,58.9,12.8
+4. Output logits (12-d),12,20.9,47.8,47.8,12.8
+5. Gesture label only (on-device),12,12.8,13.4,13.4,12.8

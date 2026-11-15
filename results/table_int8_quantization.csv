@@ -1,0 +1,3 @@
+size,F1_float,F1_int8,std_int8,worst_int8,agree_pct,f32_KB,int8_KB,drop,compression
+M,89.6,89.3,4.0,84.3,97.9,97.8,30.1,-0.3,3.2x
+S,88.4,88.5,4.7,82.0,97.3,27.7,11.1,0.1,2.5x
