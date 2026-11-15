@@ -4,7 +4,7 @@ Recognising 12 hand gestures from three ultra-wideband (UWB) impulse radars with
 
 **[▶ Live demo](https://huggingface.co/spaces/Waliyaaaa/radar-gesture-edge-ai)**: the INT8 model runs in your browser on real radar recordings.
 
-> Status: active work. Publication experiments (extra seeds, stronger privacy attackers) and an embedded C firmware simulation are in progress.
+> Status: active work. The embedded C firmware (`firmware/`) is verified against TensorFlow Lite and runs on an emulated Cortex-M4; publication experiments (extra seeds, stronger privacy attackers) are in progress.
 
 ---
 
@@ -48,7 +48,7 @@ Recognising 12 hand gestures from three ultra-wideband (UWB) impulse radars with
 
 ## Main findings
 
-1. **Evaluation protocol matters.** Under leave-one-subject-out the model reaches 89.6%; published 97–99% results on this dataset mostly use random splits where the same person appears in training and test data.
+1. **Evaluation protocol matters.** On a random 80/20 split (the protocol behind most published 97–99% results) the same 24K-parameter model reaches **98.7 ± 0.2%** accuracy. Under leave-one-subject-out, where the test person is never seen, it reaches 89.6%.
 2. **The top radar is essential.** Without it, gestures that differ only in vertical direction are confused (up→down vs down→up recall 52% → 98% when the top radar is added).
 3. **Accuracy saturates at ~6K parameters.** The 6.5 KB model is within 1 point of the 24 KB model.
 4. **MACs are not latency.** The small model has 3.4× fewer MACs but runs only 2.3–2.5× faster on STM32.
@@ -66,6 +66,8 @@ src/         radar_utils.py: shared code (data loading, LOSO folds, pre-processi
 results/     CSV tables behind every number above
 figures/     plots used in the report
 models/      INT8 TFLite models (one per LOSO fold)
+firmware/    C99 firmware: streaming pre-processing + fused INT8 CNN for Cortex-M4,
+             host tests and QEMU/Unicorn simulation (see firmware/README.md)
 demo/        static web demo (index.html): INT8 inference in the browser
 ```
 
